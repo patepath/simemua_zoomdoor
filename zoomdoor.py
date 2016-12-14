@@ -103,6 +103,8 @@ def thread_socket_send():
 		status = bus.read_byte_data(port_in, ch1_in)
 
 		#--------------------------------------------
+		# check door is open/close
+		#--------------------------------------------
 		if status & 0b00000001 == 0b00000000:
 			msg = 'F001 D0\n'
 
@@ -112,10 +114,12 @@ def thread_socket_send():
 		else:
 			msg = 'F001 D2\n'
 
-		if msg != msg_door:
+		if msg != msg_door:	# protect duplicate
 			s.send(msg)
 			msg_door = msg
 
+		#--------------------------------------------
+		# check PER switch activated
 		#--------------------------------------------
 		if status & 0b00010000 == 0b00000000:
 			msg = 'F003 D1\n'
@@ -124,33 +128,41 @@ def thread_socket_send():
 		else:
 			msg = 'F003 D0\n'
 
-		if msg != msg_per:
+		if msg != msg_per:	# protect duplicate
 			s.send(msg)
 			msg_per = msg
 
 		#--------------------------------------------
+		# check Key switch activated 
+		#--------------------------------------------
 		if status & 0b00100000 == 0b00000000:
 			msg = 'F004 D1\n'
 			close_lamp()
-			is_disabled = True
+			#is_disabled = True
 		else:
 			msg = 'F004 D0\n'
-			is_disabled = False
+			#is_disabled = False
 
-		if msg != msg_key:
+		if msg != msg_key:	# protect duplicate
 			s.send(msg)
 			msg_key = msg
 
 		#--------------------------------------------
+		# check door is disabled
+		#--------------------------------------------
 		if status & 0b00000100 == 0b00000100:
 			msg = 'F005 D1\n'
+			is_disabled = True
 		else:
 			msg = 'F005 D0\n'
+			is_disabled = False
 
-		if msg != msg_disable:
+		if msg != msg_disable:	# protect duplicate
 			s.send(msg)
 			msg_disable= msg
 
+		#--------------------------------------------
+		# check door was locked
 		#--------------------------------------------
 		if status & 0b00001000 == 0b00000000:
 			msg = 'F006 D1\n'
@@ -159,7 +171,7 @@ def thread_socket_send():
 			msg = 'F006 D0\n'
 			is_door_locked = False
 
-		if msg != msg_lock:
+		if msg != msg_lock:		# protect duplicate
 			s.send(msg)
 			msg_lock = msg
 
@@ -174,7 +186,7 @@ def thread_socket_recv():
 			dev_id = data.split(' ')[0]
 			dev_cmd = data.split(' ')[1]
 
-			if not is_door_locked: 		# check the door was locked
+			if not is_disabled: 		# check the door was locked
 				if dev_id == 'F001':
 					if dev_cmd == 'S1':
 						close_door()
